@@ -1,0 +1,51 @@
+---
+- name: Add repository influxdb key
+  apt_key: url=https://repos.influxdata.com/influxdb.key state=present
+
+- name: Add repository influxdb
+  apt_repository: repo='deb https://repos.influxdata.com/ubuntu xenial stable' state=present filename='influxdb'
+
+- name: Add repository grafana key
+  apt_key: url=https://packagecloud.io/gpg.key state=present
+
+- name: Add repository grafana
+  apt_repository: repo='deb https://packagecloud.io/grafana/stable/debian/ jessie main' state=present filename='grafana'
+
+
+- name: Install influxdb  packages
+  apt:
+    update_cache: yes
+    name: "{{ item }}"
+    install_recommends: no
+  with_items:
+      - influxdb
+      - python-influxdb
+      - grafana
+
+- name: Start the InfluxDB service
+  service: name=influxdb state=started
+
+- name: Create database using custom credentials
+  influxdb_database:
+      hostname: "{{influxdb_ip_address}}"
+      username: "{{influxdb_username}}"
+      password: "{{influxdb_password}}"
+      database_name: "{{influxdb_database_name}}"
+      state: present
+
+- name: Enable Icinga2 InfluxDB Feature
+  command: "icinga2 feature enable influxdb"
+  register: features_result
+  changed_when: "'for these changes to take effect' in features_result.stdout"
+  notify:
+    - restart icinga2
+
+- name: Install influxdb config file
+  template: src=influxdb.conf.j2 dest=/etc/icinga2/features-available/influxdb.conf
+  notify:
+    - restart icinga2
+
+- name: enable service grafana
+  service: name=grafana-server
+           state=started
+           enabled=yes

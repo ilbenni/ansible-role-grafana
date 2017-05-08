@@ -1,0 +1,4 @@
+influxdb_ip_address: localhost
+influxdb_username: icinga2
+influxdb_password: password
+influxdb_database_name: icinga2
